@@ -1,0 +1,48 @@
+#	Opciones del microcontrolador
+MCU		:=	atmega328p
+PORT	:=	/dev/ttyUSB0
+baud	:=	115200
+
+# Opciones compilador
+CC		:=	avr-gcc
+OCPY	:=	avr-objcopy -j .text -j .data
+CFLAG	:=	-mmcu=$(MCU) -g -Os -Wextra
+OFLAG	:=	-mmcu=$(MCU) -O
+SIZE	:=	avr-size
+
+#	Directorios
+SDIR	:=	src
+ODIR	:=	obj
+BDIR	:=	bin
+LDIR	:=	include
+
+# Archivos
+OBJ		:= 	$(addprefix $(ODIR)/, $(patsubst src/%.c, %.o, $(wildcard **/*.c)))
+BIN		:=	led
+
+# Funciones
+.PHONY	:	all clean upload
+
+all	:	$(ODIR) $(BDIR)/$(BIN).hex $(SIZE)
+
+$(ODIR)	:
+	mkdir $@ $(SDIR) $(BDIR) $(LDIR)
+
+$(ODIR)/%.o	:	$(SDIR)/%.c
+	$(CC) -c $< -o $@ $(CFLAG)
+
+$(BDIR)/$(BIN).elf	:	$(OBJ)
+	$(CC) -o $@ $^ $(CFLAG)
+
+$(BDIR)/$(BIN).hex	:	$(BDIR)/$(BIN).elf
+	$(OCPY) -O ihex $^ $@
+
+$(SIZE)	:	$(BDIR)/$(BIN).elf
+	$@ --format=avr --mcu=$(MCU) $^
+
+upload	:	$(BDIR)/$(BIN).hex
+	avrdude -c arduino -p m328p -P $(PORT) -b $(baud) -U flash:w:$^ -D
+
+clean	:
+	rm -f $(ODIR)/* $(BDIR)/*
+	clear
